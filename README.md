@@ -53,6 +53,32 @@ The GitHub Actions workflows will:
 - Build and deploy your application
 - For preview deployments: Add a comment to your PR with the preview URL
 
+## Telegram Bot Integration
+
+This project includes a Telegram bot for tracking earnings and expenses.
+
+### Bot Features
+
+- Track earnings and expenses
+- Check balance
+- View transaction history
+
+### Setup Instructions
+
+1. Run the setup script:
+   ```bash
+   pnpm setup:telegram-bot
+   ```
+
+2. Follow the prompts to configure your bot
+
+3. For production deployment, add these environment variables to your Vercel project:
+   - `TELEGRAM_BOT_TOKEN`: Your bot token from BotFather
+   - `TELEGRAM_SECRET_TOKEN`: A random secret for webhook security
+   - `TELEGRAM_WEBHOOK_URL`: Your webhook URL (e.g., `https://yourdomain.com/api/telegram/webhook`)
+
+For more details, see the [Telegram Bot Documentation](docs/telegram-bot.md)
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
