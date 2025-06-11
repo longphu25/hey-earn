@@ -11,6 +11,7 @@ export async function middleware(request: NextRequest) {
       await initializeTelegramBot();
       botInitialized = true;
       console.log('Telegram bot initialized via middleware');
+      console.log(request.url);
     } catch (error) {
       console.error('Failed to initialize Telegram bot:', error);
     }

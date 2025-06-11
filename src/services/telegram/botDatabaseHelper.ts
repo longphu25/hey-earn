@@ -80,7 +80,15 @@ export async function recordSpending(
 /**
  * Get user transaction history
  */
-export async function getUserTransactions(userId: number, limit = 5): Promise<Array<any>> {
+type Transaction = {
+  userId: number;
+  type: 'earn' | 'spend';
+  amount: number;
+  description: string;
+  timestamp: Date;
+};
+
+export async function getUserTransactions(userId: number, limit = 5): Promise<Transaction[]> {
   return transactions
     .filter((t) => t.userId === userId)
     .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
