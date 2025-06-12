@@ -2,16 +2,16 @@
 
 # Script to help set up a Telegram bot
 
-echo "Telegram Bot Setup Helper"
-echo "========================="
+echo "Superteam Earn Telegram Notification Bot Setup"
+echo "============================================"
 echo ""
-echo "This script will guide you through setting up your Telegram bot for Hey Earn."
+echo "This script will guide you through setting up your Telegram notification bot for Superteam Earn."
 echo ""
 
 echo "Steps to create a Telegram bot:"
 echo "1. Open Telegram and search for @BotFather"
 echo "2. Start a conversation and send the command /newbot"
-echo "3. Follow the instructions to create your bot named 'hey_earn_bot'"
+echo "3. Follow the instructions to create your bot named 'superteam_earn_notifications_bot'"
 echo "4. Once completed, BotFather will provide you with a token"
 echo ""
 read -p "Have you created your bot with BotFather? (y/n): " created_bot
@@ -30,6 +30,9 @@ fi
 
 # Generate a secret token for webhook verification
 secret_token=$(openssl rand -hex 16)
+
+# Generate an API secret key for notification endpoint
+api_secret_key=$(openssl rand -hex 24)
 
 # Create .env file if it doesn't exist
 if [ ! -f .env ]; then
@@ -52,14 +55,22 @@ else
   echo "TELEGRAM_SECRET_TOKEN=$secret_token" >> .env
 fi
 
+if grep -q "API_SECRET_KEY" .env; then
+  sed -i '' "s|API_SECRET_KEY=.*|API_SECRET_KEY=$api_secret_key|" .env
+else
+  echo "API_SECRET_KEY=$api_secret_key" >> .env
+fi
+
 echo ""
 echo "Bot configuration added to your .env file."
+echo "Generated API secret key for notification endpoint: $api_secret_key"
 echo ""
 echo "For local development, the bot will run in polling mode."
 echo "For production, you'll need to set TELEGRAM_WEBHOOK_URL in your .env file."
 echo ""
 echo "Next Steps:"
 echo "1. Start your development server: pnpm dev"
-echo "2. Talk to your bot on Telegram to test it"
+echo "2. Talk to your bot on Telegram using /start command"
+echo "3. Set up your notification preferences with /setup command"
 echo ""
 echo "Setup complete!"

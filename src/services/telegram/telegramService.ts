@@ -1,22 +1,22 @@
-import { Telegraf } from 'telegraf';
+/**
+ * Telegram Bot Service for Superteam Earn Notifications
+ */
+import { Telegraf, Markup } from 'telegraf';
+import type { Context } from 'telegraf';
 import dotenv from 'dotenv';
-import {
-  getUserBalance,
-  recordEarning,
-  recordSpending,
-  getUserTransactions,
-  getUserPreferences,
-  setUserPreferences,
-  availableSkills,
-  ListingType,
-  getUsersForNotification,
-} from './botDatabaseHelper';
 
-// Load environment variables
-dotenv.config();
+// Type definitions
+export type ListingType = 'Bounty' | 'Project' | 'All';
+export type UserPreferences = {
+  minUsdValue: number;
+  maxUsdValue: number | null; // null means no upper limit
+  listingTypes: ListingType;
+  skills: string[];
+  geography: string | null; // User's geography, null means global
+  active: boolean; // Whether the user wants to receive notifications
+};
 
-// Interfaces for Earn listings
-interface Listing {
+export interface Listing {
   id: string;
   title: string;
   sponsor: string;
@@ -33,9 +33,30 @@ interface Listing {
   publishedAt: Date;
 }
 
-export class TelegramBotService {
+// Available skills in Superteam Earn
+export const availableSkills = [
+  'Design',
+  'Development',
+  'Content',
+  'Marketing',
+  'Community',
+  'BD',
+  'Operations',
+  'Product',
+  'Legal',
+  'Finance',
+  'Other',
+];
+
+// Load environment variables
+dotenv.config();
+
+export class TelegramService {
   private bot: Telegraf;
-  private static instance: TelegramBotService;
+  private static instance: TelegramService;
+
+  // In-memory storage for development
+  private userPreferences: Record<number, UserPreferences> = {};
 
   // Store user's current menu state
   private userStates: Record<
@@ -55,15 +76,14 @@ export class TelegramBotService {
 
     this.bot = new Telegraf(token);
     this.setupCommands();
-    this.setupListeners();
   }
 
-  public static getInstance(): TelegramBotService {
-    if (!TelegramBotService.instance) {
-      TelegramBotService.instance = new TelegramBotService();
+  public static getInstance(): TelegramService {
+    if (!TelegramService.instance) {
+      TelegramService.instance = new TelegramService();
     }
 
-    return TelegramBotService.instance;
+    return TelegramService.instance;
   }
 
   private setupCommands() {
@@ -91,172 +111,130 @@ export class TelegramBotService {
       );
     });
 
-    this.bot.command('balance', async (ctx) => {
-      const userId = ctx.from?.id;
-      if (!userId) {
-        ctx.reply('Could not identify user.');
-        return;
-      }
-
-      const balance = await getUserBalance(userId);
-      ctx.reply(`Your current balance is $${balance.toFixed(2)}`);
-    });
-
-    this.bot.command('earn', async (ctx) => {
-      const message = ctx.message.text;
-      const parts = message.split(' ');
-      const userId = ctx.from?.id;
-
-      if (!userId) {
-        ctx.reply('Could not identify user.');
-        return;
-      }
-
-      if (parts.length < 2) {
-        ctx.reply('Please provide an amount: /earn [amount] [description]');
-        return;
-      }
-
-      const amount = parseFloat(parts[1]);
-      const description = parts.slice(2).join(' ') || 'No description';
-
-      if (isNaN(amount)) {
-        ctx.reply('Please provide a valid amount');
-        return;
-      }
-
-      const newBalance = await recordEarning(userId, amount, description);
-      ctx.reply(
-        `Recorded earning of $${amount.toFixed(2)} for "${description}"\nYour new balance is $${newBalance.toFixed(2)}`
-      );
-    });
-
-    this.bot.command('spend', async (ctx) => {
-      const message = ctx.message.text;
-      const parts = message.split(' ');
-      const userId = ctx.from?.id;
-
-      if (!userId) {
-        ctx.reply('Could not identify user.');
-        return;
-      }
-
-      if (parts.length < 2) {
-        ctx.reply('Please provide an amount: /spend [amount] [description]');
-        return;
-      }
-
-      const amount = parseFloat(parts[1]);
-      const description = parts.slice(2).join(' ') || 'No description';
-
-      if (isNaN(amount)) {
-        ctx.reply('Please provide a valid amount');
-        return;
-      }
-
-      const newBalance = await recordSpending(userId, amount, description);
-      ctx.reply(
-        `Recorded expense of $${amount.toFixed(2)} for "${description}"\nYour new balance is $${newBalance.toFixed(2)}`
-      );
-    });
-
-    this.bot.command('history', async (ctx) => {
-      const userId = ctx.from?.id;
-      if (!userId) {
-        ctx.reply('Could not identify user.');
-        return;
-      }
-
-      const transactions = await getUserTransactions(userId);
-
-      if (transactions.length === 0) {
-        ctx.reply('No transactions found.');
-        return;
-      }
-
-      const historyText = transactions
-        .map((t, index) => {
-          const date = t.timestamp.toLocaleDateString();
-          const type = t.type === 'earn' ? '➕' : '➖';
-          return `${index + 1}. ${type} $${t.amount.toFixed(2)} - ${t.description} (${date})`;
-        })
-        .join('\n');
-
-      ctx.reply(`Your recent transactions:\n\n${historyText}`);
-    });
-
-    this.bot.command('setup', this.handleSetupCommand.bind(this));
-    this.bot.command('preferences', this.handlePreferencesCommand.bind(this));
+    this.bot.command('setup', (ctx) => this.handleSetupCommand(ctx));
+    this.bot.command('preferences', (ctx) => this.handlePreferencesCommand(ctx));
 
     // Handle text messages for interactive menu
-    this.bot.hears('🔧 Setup Preferences', this.handleSetupCommand.bind(this));
-    this.bot.hears('👀 View Preferences', this.handlePreferencesCommand.bind(this));
-    this.bot.hears('❓ Help', (ctx) => ctx.command.help(ctx));
+    this.bot.hears('🔧 Setup Preferences', (ctx) => this.handleSetupCommand(ctx));
+    this.bot.hears('👀 View Preferences', (ctx) => this.handlePreferencesCommand(ctx));
+    this.bot.hears('❓ Help', (ctx) =>
+      ctx.reply(
+        'Here are the available commands:\n\n' +
+          '/start - Start the bot\n' +
+          '/setup - Configure your notification preferences\n' +
+          '/preferences - View your current notification preferences\n' +
+          '/help - Show this help message\n\n' +
+          'You will receive notifications about new opportunities on Superteam Earn that match your preferences!'
+      )
+    );
 
     // Handle callback queries for preferences configuration
-    this.bot.action(/^listingType:(.+)$/, this.handleListingTypeSelection.bind(this));
-    this.bot.action(/^minUsd:(.+)$/, this.handleMinUsdSelection.bind(this));
-    this.bot.action(/^maxUsd:(.+)$/, this.handleMaxUsdSelection.bind(this));
-    this.bot.action(/^skill:(.+)$/, this.handleSkillSelection.bind(this));
-    this.bot.action('savePreferences', this.handleSavePreferences.bind(this));
-    this.bot.action('resetPreferences', this.handleResetPreferences.bind(this));
+    this.bot.action(/^listingType:(.+)$/, (ctx) => this.handleListingTypeSelection(ctx));
+    this.bot.action(/^minUsd:(.+)$/, (ctx) => this.handleMinUsdSelection(ctx));
+    this.bot.action(/^maxUsd:(.+)$/, (ctx) => this.handleMaxUsdSelection(ctx));
+    this.bot.action(/^skill:(.+)$/, (ctx) => this.handleSkillSelection(ctx));
+    this.bot.action('savePreferences', (ctx) => this.handleSavePreferences(ctx));
+    this.bot.action('resetPreferences', (ctx) => this.handleResetPreferences(ctx));
     this.bot.action('back', (ctx) => {
       ctx.answerCbQuery();
       this.handleSetupCommand(ctx);
     });
-
-    // Legacy commands (for backward compatibility)
-    this.bot.command('balance', async (ctx) => {
-      const userId = ctx.from?.id;
-      if (!userId) return;
-
-      const balance = await getUserBalance(userId);
-      ctx.reply(`Your current balance is: $${balance}`);
-    });
   }
 
-  private setupListeners() {
-    // Handle regular messages
-    this.bot.on('text', (ctx) => {
-      const messageText = ctx.message.text;
-
-      // Ignore commands which are handled separately
-      if (messageText.startsWith('/')) {
-        return;
-      }
-
-      ctx.reply('I received your message. Use /help to see available commands.');
-    });
-  }
-
-  /**
-   * Process an update from the webhook
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async handleUpdate(update: any): Promise<void> {
-    // We have to use 'any' here because the correct type is not easily importable
-    // from the telegraf library without additional setup
-    await this.bot.handleUpdate(update);
-  }
-
-  /**
-   * Launch the bot in webhook mode
-   */
   public async startWebhook(webhookUrl: string): Promise<void> {
     // Logic to set up webhook
     await this.bot.telegram.setWebhook(webhookUrl);
   }
 
-  /**
-   * Launch the bot in polling mode (for development)
-   */
   public async startPolling(): Promise<void> {
     // Start polling for updates
     this.bot.launch();
   }
 
+  public async handleUpdate(update: any): Promise<void> {
+    // Process the update
+    await this.bot.handleUpdate(update);
+  }
+
+  // Get user's notification preferences
+  private getUserPreferences(userId: number): UserPreferences | null {
+    return this.userPreferences[userId] || null;
+  }
+
+  // Set user's notification preferences
+  private setUserPreferences(
+    userId: number,
+    preferences: Partial<UserPreferences>
+  ): UserPreferences {
+    // Initialize default preferences if user doesn't exist
+    if (!this.userPreferences[userId]) {
+      this.userPreferences[userId] = {
+        minUsdValue: 0,
+        maxUsdValue: null,
+        listingTypes: 'All',
+        skills: [],
+        geography: null,
+        active: true,
+      };
+    }
+
+    // Update preferences with new values
+    this.userPreferences[userId] = {
+      ...this.userPreferences[userId],
+      ...preferences,
+    };
+
+    return this.userPreferences[userId];
+  }
+
+  // Check if user has active notification preferences
+  private hasActivePreferences(userId: number): boolean {
+    return this.userPreferences[userId] !== undefined && this.userPreferences[userId].active;
+  }
+
+  // Get users who should be notified based on listing criteria
+  private getUsersForNotification(listing: {
+    usdValue: number;
+    type: 'Bounty' | 'Project';
+    skills: string[];
+    geography: string | null; // null means global
+  }): number[] {
+    return Object.entries(this.userPreferences)
+      .filter(([, prefs]) => {
+        // Check if notifications are active
+        if (!prefs.active) return false;
+
+        // Check USD value range
+        if (listing.usdValue < prefs.minUsdValue) return false;
+        if (prefs.maxUsdValue !== null && listing.usdValue > prefs.maxUsdValue) return false;
+
+        // Check listing type
+        if (prefs.listingTypes !== 'All' && prefs.listingTypes !== listing.type) return false;
+
+        // Check skills (if user has preferences, at least one should match)
+        if (
+          prefs.skills.length > 0 &&
+          !prefs.skills.some((skill) => listing.skills.includes(skill))
+        ) {
+          return false;
+        }
+
+        // Check geography
+        if (
+          listing.geography !== null &&
+          prefs.geography !== null &&
+          prefs.geography !== listing.geography
+        ) {
+          return false;
+        }
+
+        return true;
+      })
+      .map(([userId]) => parseInt(userId));
+  }
+
   // Handler for setup command
-  private async handleSetupCommand(ctx: any): Promise<void> {
+  private async handleSetupCommand(ctx: Context): Promise<void> {
     const userId = ctx.from?.id;
     if (!userId) return;
 
@@ -276,11 +254,11 @@ export class TelegramBotService {
   }
 
   // Handler for preferences command
-  private async handlePreferencesCommand(ctx: any): Promise<void> {
+  private async handlePreferencesCommand(ctx: Context): Promise<void> {
     const userId = ctx.from?.id;
     if (!userId) return;
 
-    const prefs = await getUserPreferences(userId);
+    const prefs = this.getUserPreferences(userId);
 
     if (!prefs) {
       return ctx.reply(
@@ -305,10 +283,10 @@ export class TelegramBotService {
   }
 
   // Handler for listing type selection
-  private async handleListingTypeSelection(ctx: any): Promise<void> {
-    const userId = ctx.from?.id;
-    if (!userId) return;
+  private async handleListingTypeSelection(ctx: Context): Promise<void> {
+    if (!ctx.callbackQuery || !ctx.match || !ctx.from) return;
 
+    const userId = ctx.from.id;
     const match = ctx.match[1] as ListingType;
 
     // Set temporary user preference
@@ -338,10 +316,10 @@ export class TelegramBotService {
   }
 
   // Handler for minimum USD selection
-  private async handleMinUsdSelection(ctx: any): Promise<void> {
-    const userId = ctx.from?.id;
-    if (!userId) return;
+  private async handleMinUsdSelection(ctx: Context): Promise<void> {
+    if (!ctx.callbackQuery || !ctx.match || !ctx.from) return;
 
+    const userId = ctx.from.id;
     const minUsdValue = parseInt(ctx.match[1], 10);
 
     // Update temporary user preference
@@ -374,10 +352,10 @@ export class TelegramBotService {
   }
 
   // Handler for maximum USD selection
-  private async handleMaxUsdSelection(ctx: any): Promise<void> {
-    const userId = ctx.from?.id;
-    if (!userId) return;
+  private async handleMaxUsdSelection(ctx: Context): Promise<void> {
+    if (!ctx.callbackQuery || !ctx.match || !ctx.from) return;
 
+    const userId = ctx.from.id;
     const maxUsdStr = ctx.match[1];
     const maxUsdValue = maxUsdStr === 'null' ? null : parseInt(maxUsdStr, 10);
 
@@ -423,10 +401,10 @@ export class TelegramBotService {
   }
 
   // Handler for skill selection
-  private async handleSkillSelection(ctx: any): Promise<void> {
-    const userId = ctx.from?.id;
-    if (!userId) return;
+  private async handleSkillSelection(ctx: Context): Promise<void> {
+    if (!ctx.callbackQuery || !ctx.match || !ctx.from) return;
 
+    const userId = ctx.from.id;
     const skill = ctx.match[1];
 
     // Initialize skills array if it doesn't exist
@@ -501,9 +479,10 @@ export class TelegramBotService {
   }
 
   // Handler for saving preferences
-  private async handleSavePreferences(ctx: any): Promise<void> {
-    const userId = ctx.from?.id;
-    if (!userId) return;
+  private async handleSavePreferences(ctx: Context): Promise<void> {
+    if (!ctx.callbackQuery || !ctx.from) return;
+
+    const userId = ctx.from.id;
 
     // Get temporary user preferences
     const tempPrefs = this.userStates[userId]?.data;
@@ -514,7 +493,7 @@ export class TelegramBotService {
     }
 
     // Save user preferences
-    await setUserPreferences(userId, {
+    this.setUserPreferences(userId, {
       listingTypes: tempPrefs.listingTypes || 'All',
       minUsdValue: tempPrefs.minUsdValue || 0,
       maxUsdValue: tempPrefs.maxUsdValue,
@@ -537,9 +516,10 @@ export class TelegramBotService {
   }
 
   // Handler for resetting preferences
-  private async handleResetPreferences(ctx: any): Promise<void> {
-    const userId = ctx.from?.id;
-    if (!userId) return;
+  private async handleResetPreferences(ctx: Context): Promise<void> {
+    if (!ctx.callbackQuery || !ctx.from) return;
+
+    const userId = ctx.from.id;
 
     // Clear user state
     delete this.userStates[userId];
@@ -605,7 +585,7 @@ export class TelegramBotService {
       }
 
       // Get users who should be notified about this listing
-      const userIds = await getUsersForNotification({
+      const userIds = this.getUsersForNotification({
         usdValue: listing.usdValue,
         type: listing.type,
         skills: listing.skills,

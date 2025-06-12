@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TelegramBotService } from '@/services/telegram';
+import { TelegramService } from '@/services/telegram/telegramService';
 
 // Secret token to authenticate Telegram webhook requests
 const TELEGRAM_SECRET_TOKEN = process.env.TELEGRAM_SECRET_TOKEN;
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const update = await req.json();
 
     // Process the update with our bot service
-    const telegramService = TelegramBotService.getInstance();
+    const telegramService = TelegramService.getInstance();
     await telegramService.handleUpdate(update);
 
     return NextResponse.json({ success: true });

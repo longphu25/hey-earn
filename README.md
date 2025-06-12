@@ -1,4 +1,17 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Superteam Earn Telegram Notification Bot
+
+A Telegram notification bot for Superteam Earn that provides users with personalized alerts for new bounties and projects published on the platform.
+
+## Features
+
+- **Personalized Notifications**: Users receive alerts for new opportunities on Superteam Earn that match their preferences.
+- **Customizable Filters**: Users can configure notifications based on USD value, listing type, and specific skills.
+- **Seamless User Experience**: Accessible via a direct link from the Superteam Earn user menu.
+- **12-hour Delay**: Notifications are sent 12 hours after a listing is published.
+
+## Demo
+
+[Insert demo video link here]
 
 ## Getting Started
 
@@ -52,6 +65,28 @@ This project is configured to deploy automatically to Vercel using GitHub Action
 The GitHub Actions workflows will:
 - Build and deploy your application
 - For preview deployments: Add a comment to your PR with the preview URL
+
+## Telegram Notification Bot
+
+This project includes a Telegram bot that sends personalized notifications to Superteam Earn users about new bounties and projects.
+
+### Bot Features
+
+- Users can set preferences for the types of opportunities they want to be notified about
+- Notifications are sent 12 hours after a listing is published
+- Customizable filters for USD value, listing type, and skills
+- Each notification includes detailed information about the opportunity
+
+### Setting Up the Bot
+
+```bash
+# Run the setup script
+pnpm setup:telegram-bot
+```
+
+The script will guide you through creating a Telegram bot with BotFather and setting up the required environment variables.
+
+For detailed documentation on the Telegram bot, see [the Telegram Bot documentation](./docs/telegram-bot.md).
 
 ## Telegram Bot Integration
 

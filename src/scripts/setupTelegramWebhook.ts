@@ -1,4 +1,4 @@
-import { TelegramBotService } from '@/services/telegram';
+import { TelegramService } from '@/services/telegram/telegramService';
 
 /**
  * This function is called when the server starts in production mode
@@ -17,7 +17,7 @@ export async function setupTelegramWebhook() {
       return;
     }
 
-    const telegramService = TelegramBotService.getInstance();
+    const telegramService = TelegramService.getInstance();
     await telegramService.startWebhook(webhookUrl);
 
     console.log('Telegram webhook setup complete');

@@ -12,6 +12,16 @@
     "src/app/api/telegram/webhook/route.ts": {
       "memory": 1024,
       "maxDuration": 10
+    },
+    "src/app/api/telegram/notify/route.ts": {
+      "memory": 1024,
+      "maxDuration": 30
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/telegram/notify",
+      "schedule": "0 */1 * * *"
+    }
+  ]
 }

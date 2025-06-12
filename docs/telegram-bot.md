@@ -1,10 +1,27 @@
-# Telegram Bot Integration
+# Superteam Earn Telegram Notification Bot
 
-This document explains how the Telegram bot for Hey Earn works and how to set it up.
+This document explains how the Telegram notification bot for Superteam Earn works and how to set it up.
 
 ## Overview
 
-The Hey Earn Telegram bot allows users to track their earnings and expenses directly from Telegram. Users can interact with the bot using commands to record transactions and view their financial information.
+The Superteam Earn Telegram notification bot provides users with personalized alerts for new bounties and projects published on the platform. Users can configure their preferences to receive notifications based on USD value, listing type, and specific skills.
+
+## Features
+
+- **Personalized Notifications**: Users receive alerts for new opportunities on Superteam Earn that match their preferences.
+- **Customizable Filters**: Users can configure notifications based on:
+  - USD value range
+  - Listing type (Bounties, Projects, or both)
+  - Specific skills
+- **Seamless User Experience**: Accessible via a direct link from the Superteam Earn user menu.
+- **Rich Notifications**: Each notification includes:
+  - Title of the listing
+  - Sponsor's name
+  - Reward token name and value
+  - Reward amount in USD
+  - Variable compensation or range information
+  - Direct link to the listing with UTM tracking
+  - Deadline for the listing
 
 ## Bot Commands
 
@@ -12,10 +29,8 @@ The bot supports the following commands:
 
 - `/start` - Start the bot and get a welcome message
 - `/help` - Display a list of available commands
-- `/balance` - Check your current balance
-- `/earn [amount] [description]` - Record an earning
-- `/spend [amount] [description]` - Record an expense
-- `/history` - View your recent transactions
+- `/setup` - Configure notification preferences
+- `/preferences` - View current notification settings
 
 ## Setting Up the Bot
 
@@ -49,8 +64,25 @@ For production deployment, you need to:
    - `TELEGRAM_BOT_TOKEN` - Your bot token from BotFather
    - `TELEGRAM_SECRET_TOKEN` - A random secret token for webhook security
    - `TELEGRAM_WEBHOOK_URL` - The URL for your bot webhook (e.g., `https://yourdomain.com/api/telegram/webhook`)
+   - `API_SECRET_KEY` - A secret key to secure the notification API endpoint
+   - `DATABASE_URL` - Connection string for the Superteam Earn database (if applicable)
 
 2. Deploy your application. The bot will automatically set up webhook mode in production.
+
+3. Set up a scheduled job to trigger notifications 12 hours after listings are published:
+   - For Vercel, add a cron job in your `vercel.json`:
+     ```json
+     {
+       "crons": [
+         {
+           "path": "/api/telegram/notify",
+           "schedule": "0 */1 * * *"
+         }
+       ]
+     }
+     ```
+   - This will check for new listings every hour and send notifications for those published 12 hours ago.
+   - The endpoint is secured with the `API_SECRET_KEY` header.
 
 ## Architecture
 
@@ -65,8 +97,16 @@ The code structure is:
 src/
   services/
     telegram/
-      telegramBotService.ts  - Main bot service
-      botDatabaseHelper.ts   - Helper for database operations
+      telegramService.ts  - Main bot service for notifications
+      scheduledJobs.ts    - Job to process listings and send notifications
+      bootstrapper.ts     - Bot initialization logic
+  app/
+    api/
+      telegram/
+        webhook/
+          route.ts        - Webhook endpoint for Telegram updates
+        notify/
+          route.ts        - Endpoint to trigger notification processing
       bootstrapper.ts        - Bot initialization logic
   app/
     api/

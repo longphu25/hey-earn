@@ -1,4 +1,4 @@
-import { TelegramBotService } from '@/services/telegram';
+import { TelegramService } from '@/services/telegram/telegramService';
 
 /**
  * Initialize the Telegram bot service
@@ -7,7 +7,7 @@ import { TelegramBotService } from '@/services/telegram';
  */
 export async function initializeTelegramBot() {
   try {
-    const telegramService = TelegramBotService.getInstance();
+    const telegramService = TelegramService.getInstance();
 
     const isProd = process.env.NODE_ENV === 'production';
     const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
