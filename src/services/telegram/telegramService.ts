@@ -261,10 +261,11 @@ export class TelegramService {
     const prefs = this.getUserPreferences(userId);
 
     if (!prefs) {
-      return ctx.reply(
+      await ctx.reply(
         "You haven't set up your preferences yet. Use /setup to configure them.",
         Markup.keyboard([['🔧 Setup Preferences'], ['❓ Help']]).resize()
       );
+      return;
     }
 
     const skillsText = prefs.skills.length > 0 ? prefs.skills.join(', ') : 'All skills';
@@ -284,21 +285,24 @@ export class TelegramService {
 
   // Handler for listing type selection
   private async handleListingTypeSelection(ctx: Context): Promise<void> {
-    if (!ctx.callbackQuery || !ctx.match || !ctx.from) return;
+    if (!ctx.callbackQuery || !ctx.from) return;
 
     const userId = ctx.from.id;
-    const match = ctx.match[1] as ListingType;
+    const data = ctx.callbackQuery.data;
+    const match = data.match(/^listingType:(.+)$/);
+    if (!match) return;
+    const listingType = match[1] as ListingType;
 
     // Set temporary user preference
     this.userStates[userId] = {
       action: 'setup_min_usd',
-      data: { listingTypes: match },
+      data: { listingTypes: listingType },
     };
 
-    await ctx.answerCbQuery(`Selected: ${match}`);
+    await ctx.answerCbQuery(`Selected: ${listingType}`);
 
     await ctx.editMessageText(
-      `Selected listing type: ${match}\n\n` +
+      `Selected listing type: ${listingType}\n\n` +
         `Now, what's the minimum USD value you're interested in?`,
       Markup.inlineKeyboard([
         [

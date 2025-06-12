@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:ngrok": "node scripts/dev-ngrok.js",
+    "ngrok": "ngrok http 3000",
+    "ngrok:diagnose": "node scripts/ngrok-diagnose.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -13,7 +16,9 @@
     "setup:telegram-bot": "./scripts/setup-telegram-bot.sh"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.80.7",
     "dotenv": "^16.5.0",
+    "https-proxy-agent": "^7.0.6",
     "next": "15.3.3",
     "node-telegram-bot-api": "^0.66.0",
     "react": "^19.1.0",
@@ -22,7 +27,9 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@ngrok/ngrok": "^1.5.1",
     "@tailwindcss/postcss": "^4.1.9",
+    "@tanstack/react-query-devtools": "^5.80.7",
     "@types/node": "^24.0.0",
     "@types/node-telegram-bot-api": "^0.64.9",
     "@types/react": "^19.1.8",
@@ -31,6 +38,7 @@
     "eslint": "^9.28.0",
     "eslint-config-next": "15.3.3",
     "eslint-config-prettier": "^10.1.5",
+    "ngrok": "5.0.0-beta.2",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.12",
     "tailwindcss": "^4.1.9",

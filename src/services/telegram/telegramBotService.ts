@@ -1,4 +1,4 @@
-import { Telegraf } from 'telegraf';
+import { Telegraf, Markup } from 'telegraf';
 import dotenv from 'dotenv';
 import {
   getUserBalance,
@@ -191,7 +191,16 @@ export class TelegramBotService {
     // Handle text messages for interactive menu
     this.bot.hears('🔧 Setup Preferences', this.handleSetupCommand.bind(this));
     this.bot.hears('👀 View Preferences', this.handlePreferencesCommand.bind(this));
-    this.bot.hears('❓ Help', (ctx) => ctx.command.help(ctx));
+    this.bot.hears('❓ Help', (ctx) => {
+      ctx.reply(
+        'Here are the available commands:\n\n' +
+          '/start - Start the bot\n' +
+          '/setup - Configure your notification preferences\n' +
+          '/preferences - View your current notification preferences\n' +
+          '/help - Show this help message\n\n' +
+          'You will receive notifications about new opportunities on Superteam Earn that match your preferences!'
+      );
+    });
 
     // Handle callback queries for preferences configuration
     this.bot.action(/^listingType:(.+)$/, this.handleListingTypeSelection.bind(this));
@@ -232,7 +241,7 @@ export class TelegramBotService {
   /**
    * Process an update from the webhook
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   public async handleUpdate(update: any): Promise<void> {
     // We have to use 'any' here because the correct type is not easily importable
     // from the telegraf library without additional setup
